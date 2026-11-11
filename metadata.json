@@ -1,0 +1,48 @@
+{
+  "id": "gnome-inspired-overview",
+  "name": "GNOME-Inspired Overview",
+  "description": "A GNOME-inspired overview: workspace thumbnails along the top and live window previews. Meta opens it; typing opens the launcher from the bottom and the windows flow around it.",
+  "version": "1.0.0",
+  "type": "quickshell",
+  "ui": "main.qml",
+  "icon": "grid_view",
+  "license": "MIT",
+  "repository": "https://github.com/BlazeJewell/gnome-inspired-overview",
+  "author": {
+    "name": "Jake",
+    "url": "https://github.com/BlazeJewell"
+  },
+  "keywords": [
+    "overview",
+    "gnome",
+    "workspaces"
+  ],
+  "shell-compat": {
+    "min": "2.6.3"
+  },
+  "settings": [
+    {
+      "id": "replaceOverview",
+      "label": "Replace the built-in overview (Meta+Tab)",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "id": "metaOpensOverview",
+      "label": "Meta opens the overview (type to open the launcher)",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "id": "thumbnailPreviews",
+      "label": "Show app icons in workspace thumbnails",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "screenshots": [
+    "screenshots/overview.jpg",
+    "screenshots/launcher-flow.jpg",
+    "screenshots/workspaces.png"
+  ]
+}
