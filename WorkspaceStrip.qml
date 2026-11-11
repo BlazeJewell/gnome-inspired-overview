@@ -23,8 +23,9 @@ Item {
     property bool live: true
     /// Most windows previewed per thumbnail: each is its own stream.
     property int maxPreviews: 8
-    /// The big cards' previews by address, for the current workspace.
-    property var cardPreviews: ({})
+    /// Told about each window preview, so the big cards can mirror it.
+    property var registerPreview: (address, item) => {}
+    property var unregisterPreview: (address, item) => {}
     property bool dragging: false
     property var windowsOn: wsId => []
 
@@ -56,17 +57,37 @@ Item {
         spacing: root.gap
 
         Repeater {
-            model: Kwin.workspaces
+            // Keyed by workspace id, so a thumbnail and its window previews
+            // live on while the workspace list is refreshed (as it is on every
+            // switch) instead of being rebuilt with every stream restarting.
+            model: ScriptModel {
+                values: (Kwin.workspaces ?? []).map(w => w.id)
+            }
 
             Item {
                 id: thumb
 
                 required property var modelData
-                readonly property int wsId: modelData.index
+                readonly property var ws: (Kwin.workspaces ?? []).find(w => w.id === thumb.modelData) ?? ({})
+                readonly property int wsId: ws.index ?? 0
                 readonly property bool active: wsId === root.activeWsId
                 readonly property var wins: {
                     const _t = Kwin.windowList;
                     return root.windowsOn(wsId);
+                }
+                /// The windows drawn in this thumbnail, by address: bottom of
+                /// the stack first, minimised ones left out.
+                readonly property var shownWins: {
+                    if (!root.showIcons)
+                        return [];
+                    const shown = wins.filter(w => !w.minimized && w.address);
+                    return shown.slice(Math.max(0, shown.length - root.maxPreviews));
+                }
+                readonly property var winByAddress: {
+                    const map = {};
+                    for (const w of shownWins)
+                        map[w.address] = w;
+                    return map;
                 }
 
                 width: root.thumbWidth
@@ -99,39 +120,32 @@ Item {
                     // bottom of the stack first. Minimised windows are not on
                     // screen, so they are left out.
                     Repeater {
-                        model: {
-                            if (!root.showIcons)
-                                return [];
-                            const shown = thumb.wins.filter(w => !w.minimized);
-                            return shown.slice(Math.max(0, shown.length - root.maxPreviews));
+                        // Keyed by address, so a moved or refreshed window keeps
+                        // its preview and stream; only its geometry updates.
+                        model: ScriptModel {
+                            values: thumb.shownWins.map(w => w.address)
                         }
 
                         StyledClippingRect {
                             id: mini
 
                             required property var modelData
+                            required property int index
+                            readonly property var client: thumb.winByAddress[modelData] ?? ({})
+                            z: index
                             readonly property real sx: frame.width / Math.max(1, root.screen.width)
                             readonly property real sy: frame.height / Math.max(1, root.screen.height)
 
-                            x: Math.max(0, (modelData.x - root.screen.x) * sx)
-                            y: Math.max(0, (modelData.y - root.screen.y) * sy)
-                            width: Math.min(frame.width - x, Math.max(6, modelData.width * sx))
-                            height: Math.min(frame.height - y, Math.max(4, modelData.height * sy))
+                            x: Math.max(0, ((client.x ?? 0) - root.screen.x) * sx)
+                            y: Math.max(0, ((client.y ?? 0) - root.screen.y) * sy)
+                            width: Math.min(frame.width - x, Math.max(6, (client.width ?? 0) * sx))
+                            height: Math.min(frame.height - y, Math.max(4, (client.height ?? 0) * sy))
                             radius: Math.max(2, Tokens.rounding.small * 0.5)
                             // A plain fill only until the first frame arrives.
-                            color: mini.cardItem !== null || miniPreview.hasStream ? "transparent" : Colours.tPalette.m3surfaceContainerHigh
+                            color: miniPreview.hasStream ? "transparent" : Colours.tPalette.m3surfaceContainerHigh
 
-                            readonly property Item cardItem: thumb.active ? (root.cardPreviews[modelData.address] ?? null) : null
-
-                            // The current workspace's windows are already
-                            // streaming to their big cards: show those.
-                            ShaderEffectSource {
-                                anchors.fill: parent
-                                visible: mini.cardItem !== null
-                                sourceItem: mini.cardItem
-                                live: true
-                                hideSource: false
-                            }
+                            Component.onCompleted: root.registerPreview(modelData, miniPreview)
+                            Component.onDestruction: root.unregisterPreview(modelData, miniPreview)
 
                             WindowPreview {
                                 id: miniPreview
@@ -139,12 +153,11 @@ Item {
                                 anchors.centerIn: parent
                                 width: parent.width + 2
                                 height: parent.height + 2
-                                visible: mini.cardItem === null
-                                active: root.live && mini.cardItem === null && mini.modelData.address !== ""
-                                address: mini.modelData.address ?? ""
-                                fallbackIcon: WinIcons.sourceForClient(mini.modelData)
+                                active: root.live && mini.modelData !== ""
+                                address: mini.modelData ?? ""
+                                fallbackIcon: WinIcons.sourceForClient(mini.client)
                                 fallbackScale: 0.45
-                                sourceAspect: mini.modelData.width > 0 && mini.modelData.height > 0 ? mini.modelData.width / mini.modelData.height : 16 / 9
+                                sourceAspect: mini.client.width > 0 && mini.client.height > 0 ? mini.client.width / mini.client.height : 16 / 9
                             }
                         }
                     }
@@ -175,8 +188,8 @@ Item {
                     anchors.top: parent.bottom
                     anchors.topMargin: Math.round(4 * root.s)
                     anchors.horizontalCenter: parent.horizontalCenter
-                    visible: thumbHover.hovered && thumb.modelData.name
-                    text: thumb.modelData.name ?? ""
+                    visible: thumbHover.hovered && thumb.ws.name
+                    text: thumb.ws.name ?? ""
                     color: Colours.palette.m3onSurface
                     font: Tokens.font.label.small
                 }
@@ -191,7 +204,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: mouse => {
                         if (mouse.button === Qt.MiddleButton)
-                            root.removeWorkspace(thumb.modelData);
+                            root.removeWorkspace(thumb.ws);
                         else
                             root.workspaceClicked(thumb.wsId);
                     }
@@ -222,7 +235,7 @@ Item {
                         anchors.fill: parent
                         radius: parent.radius
                         color: Colours.palette.m3onSurface
-                        onClicked: root.removeWorkspace(thumb.modelData)
+                        onClicked: root.removeWorkspace(thumb.ws)
                     }
 
                     MaterialIcon {

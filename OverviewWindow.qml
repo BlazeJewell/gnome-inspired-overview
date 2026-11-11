@@ -66,26 +66,27 @@ StyledWindow {
         return Visibilities.exclusionsFor(screen);
     }
     property bool dragging: false
-    /// The big cards' preview items by window address. The current
-    /// workspace's thumbnail mirrors these: a second stream of a window that is
-    /// already streaming gets no frame until the window next repaints.
-    property var cardPreviews: ({})
+    /// The workspace strip's window previews by address. Each window streams
+    /// once, to its thumbnail, and the big cards mirror that: a second stream
+    /// of a window gets no frame until the window next repaints, and swapping
+    /// streams on every workspace switch made the thumbnails flicker.
+    property var thumbPreviews: ({})
 
-    function _setCardPreview(address: string, item: Item): void {
+    function _setThumbPreview(address: string, item: Item): void {
         if (!address || !item)
             return;
-        const map = Object.assign({}, cardPreviews);
+        const map = Object.assign({}, thumbPreviews);
         map[address] = item;
-        cardPreviews = map;
+        thumbPreviews = map;
     }
 
-    /// Only if it is still this card's: a rebuilt card may have taken over.
-    function _clearCardPreview(address: string, item: Item): void {
-        if (!address || cardPreviews[address] !== item)
+    /// Only if it is still this preview's: a rebuilt one may have taken over.
+    function _clearThumbPreview(address: string, item: Item): void {
+        if (!address || thumbPreviews[address] !== item)
             return;
-        const map = Object.assign({}, cardPreviews);
+        const map = Object.assign({}, thumbPreviews);
         delete map[address];
-        cardPreviews = map;
+        thumbPreviews = map;
     }
 
     // ---- Pointer while the launcher is open --------------------------------
@@ -561,7 +562,8 @@ StyledWindow {
             activeWsId: win.activeWsId
             showIcons: win.showThumbIcons
             live: win.shown
-            cardPreviews: win.cardPreviews
+            registerPreview: (address, item) => win._setThumbPreview(address, item)
+            unregisterPreview: (address, item) => win._clearThumbPreview(address, item)
             dragging: win.dragging
             windowsOn: wsId => win.windowsOn(wsId)
             onWorkspaceClicked: wsId => {
@@ -704,8 +706,7 @@ StyledWindow {
                     }
                     onActivated: win.activateWindow(modelData.address)
                     onDragActiveChanged: win.dragging = dragActive
-                    Component.onCompleted: win._setCardPreview(modelData.address, previewItem)
-                    Component.onDestruction: win._clearCardPreview(modelData.address, previewItem)
+                    mirrorSource: win.thumbPreviews[modelData.address] ?? null
                 }
             }
 

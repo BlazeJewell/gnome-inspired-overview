@@ -31,9 +31,11 @@ Item {
     readonly property real aspect: client && client.width > 0 && client.height > 0 ? client.width / client.height : 16 / 10
     readonly property real iconSize: Math.round(Math.max(28, Math.min(56, Math.min(width, height) * 0.22)) * Math.min(1.2, s))
     property bool closing: false
-    /// The live preview, so the workspace strip can mirror it instead of
-    /// opening a second stream of the same window.
-    readonly property Item previewItem: preview
+    /// This window's preview in the workspace strip, when it has one. The
+    /// card shows that stream instead of opening a second one, so switching
+    /// workspaces starts and stops no streams.
+    property Item mirrorSource: null
+    readonly property bool mirroring: mirrorSource !== null && mirrorSource.hasStream === true
 
     signal activated()
 
@@ -109,7 +111,7 @@ Item {
         // Only behind the icon fallback: under a live preview the light fill
         // shows through the rounded edge as a bright fringe while the card
         // moves and resizes through fractional pixels.
-        color: preview.hasStream ? "transparent" : Colours.tPalette.m3surfaceContainer
+        color: root.mirroring || preview.hasStream ? "transparent" : Colours.tPalette.m3surfaceContainer
         border.width: root.selected || root.hovered ? Math.max(2, Math.round(3 * root.s)) : 0
         border.color: Qt.alpha(Colours.palette.m3primary, 0.9)
 
@@ -121,10 +123,24 @@ Item {
             anchors.centerIn: parent
             width: parent.width + 2
             height: parent.height + 2
-            active: root.live && root.clientAddress !== ""
+            visible: !root.mirroring
+            active: root.live && root.mirrorSource === null && root.clientAddress !== ""
             address: root.clientAddress
             fallbackIcon: WinIcons.sourceForClient(root.client)
             sourceAspect: root.aspect
+        }
+
+        // The thumbnail's stream, drawn at this card's full resolution.
+        ShaderEffectSource {
+            anchors.centerIn: parent
+            width: parent.width + 2
+            height: parent.height + 2
+            visible: root.mirroring
+            sourceItem: root.mirroring ? root.mirrorSource : null
+            textureSize: Qt.size(Math.ceil(width * Screen.devicePixelRatio), Math.ceil(height * Screen.devicePixelRatio))
+            live: true
+            hideSource: false
+            smooth: true
         }
     }
 
