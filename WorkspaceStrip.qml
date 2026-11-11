@@ -5,17 +5,26 @@ import Quickshell
 import Quickshell.Widgets
 import Caelestia.Config
 import qs.components
+import qs.components.images
 import qs.services
 
-// The row of workspace thumbnails across the top. Each one shows the wallpaper
-// and a miniature of its windows; windows dragged from the grid drop onto them.
+// The row of workspace thumbnails across the top. Each one is a small copy of
+// that desktop: the wallpaper with live, scaled-down previews of its windows
+// where they sit. Windows dragged from the grid drop onto them.
 Item {
     id: root
 
     property real s: 1
     property ShellScreen screen
     property int activeWsId: 1
+    /// Draw the windows in each thumbnail.
     property bool showIcons: true
+    /// Previews stream only while the overview is open.
+    property bool live: true
+    /// Most windows previewed per thumbnail: each is its own stream.
+    property int maxPreviews: 8
+    /// The big cards' previews by address, for the current workspace.
+    property var cardPreviews: ({})
     property bool dragging: false
     property var windowsOn: wsId => []
 
@@ -86,11 +95,18 @@ Item {
                         opacity: thumb.active ? 1 : 0.75
                     }
 
-                    // Miniature windows, placed where they sit on the screen.
+                    // Miniature windows, placed where they sit on the screen,
+                    // bottom of the stack first. Minimised windows are not on
+                    // screen, so they are left out.
                     Repeater {
-                        model: thumb.wins
+                        model: {
+                            if (!root.showIcons)
+                                return [];
+                            const shown = thumb.wins.filter(w => !w.minimized);
+                            return shown.slice(Math.max(0, shown.length - root.maxPreviews));
+                        }
 
-                        StyledRect {
+                        StyledClippingRect {
                             id: mini
 
                             required property var modelData
@@ -101,17 +117,34 @@ Item {
                             y: Math.max(0, (modelData.y - root.screen.y) * sy)
                             width: Math.min(frame.width - x, Math.max(6, modelData.width * sx))
                             height: Math.min(frame.height - y, Math.max(4, modelData.height * sy))
-                            radius: Math.max(2, Tokens.rounding.small * 0.6)
-                            color: Qt.alpha(Colours.palette.m3surfaceContainerHigh, 0.92)
-                            border.width: 1
-                            border.color: Qt.alpha(Colours.palette.m3outline, 0.5)
+                            radius: Math.max(2, Tokens.rounding.small * 0.5)
+                            // A plain fill only until the first frame arrives.
+                            color: mini.cardItem !== null || miniPreview.hasStream ? "transparent" : Colours.tPalette.m3surfaceContainerHigh
 
-                            IconImage {
+                            readonly property Item cardItem: thumb.active ? (root.cardPreviews[modelData.address] ?? null) : null
+
+                            // The current workspace's windows are already
+                            // streaming to their big cards: show those.
+                            ShaderEffectSource {
+                                anchors.fill: parent
+                                visible: mini.cardItem !== null
+                                sourceItem: mini.cardItem
+                                live: true
+                                hideSource: false
+                            }
+
+                            WindowPreview {
+                                id: miniPreview
+
                                 anchors.centerIn: parent
-                                visible: root.showIcons && mini.width > 14 && mini.height > 14
-                                implicitSize: Math.min(mini.width, mini.height) * 0.55
-                                asynchronous: true
-                                source: WinIcons.sourceForClient(mini.modelData)
+                                width: parent.width + 2
+                                height: parent.height + 2
+                                visible: mini.cardItem === null
+                                active: root.live && mini.cardItem === null && mini.modelData.address !== ""
+                                address: mini.modelData.address ?? ""
+                                fallbackIcon: WinIcons.sourceForClient(mini.modelData)
+                                fallbackScale: 0.45
+                                sourceAspect: mini.modelData.width > 0 && mini.modelData.height > 0 ? mini.modelData.width / mini.modelData.height : 16 / 9
                             }
                         }
                     }

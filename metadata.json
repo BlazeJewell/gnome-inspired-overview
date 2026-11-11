@@ -35,7 +35,7 @@
     },
     {
       "id": "thumbnailPreviews",
-      "label": "Show app icons in workspace thumbnails",
+      "label": "Show windows in workspace thumbnails",
       "type": "toggle",
       "default": true
     }

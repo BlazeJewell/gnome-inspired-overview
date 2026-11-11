@@ -31,6 +31,9 @@ Item {
     readonly property real aspect: client && client.width > 0 && client.height > 0 ? client.width / client.height : 16 / 10
     readonly property real iconSize: Math.round(Math.max(28, Math.min(56, Math.min(width, height) * 0.22)) * Math.min(1.2, s))
     property bool closing: false
+    /// The live preview, so the workspace strip can mirror it instead of
+    /// opening a second stream of the same window.
+    readonly property Item previewItem: preview
 
     signal activated()
 

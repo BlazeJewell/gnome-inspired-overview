@@ -9,7 +9,7 @@ along the top. Start typing and the shell's launcher rises from the bottom while
 ## Features
 
 - **Live window previews** of the current workspace, laid out to fill the screen inside the shell's border and bar.
-- **Workspace strip** along the top: click a thumbnail to switch, drag a window onto one to move it,
+- **Workspace strip** along the top, each thumbnail a live miniature of that desktop with its windows where they sit. Click a thumbnail to switch, drag a window onto one to move it,
   `+` to add a workspace, and the × on a hovered thumbnail (or a middle-click) to remove one.
 - **Type to search.** Typing opens the shell's own launcher with what you typed. The windows flow
   around it, above and to either side, and reflow as the results change.
@@ -19,7 +19,7 @@ along the top. Start typing and the shell's launcher rises from the bottom while
 
 ![Typing opens the launcher; the windows move above and beside it](screenshots/launcher-flow.jpg)
 
-![Workspace thumbnails with the current workspace highlighted and a + button to add one](screenshots/workspaces.png)
+![Workspace thumbnails showing live miniatures of each desktop, the current one highlighted, and a + button to add one](screenshots/workspaces.png)
 
 ## Requirements
 
@@ -67,7 +67,7 @@ Found in **Settings → System & Services → Caelestia Plugins**, under GNOME-I
 | --- | --- | --- |
 | Replace the built-in overview (Meta+Tab) | On | Meta+Tab opens this overview instead of the shell's own. |
 | Meta opens the overview | On | Meta opens this overview instead of the launcher; type to get the launcher. |
-| Show app icons in workspace thumbnails | On | Draws each workspace's app icons on its thumbnail. |
+| Show windows in workspace thumbnails | On | Draws live previews of each workspace's windows on its thumbnail, up to 8 per workspace. |
 
 ## IPC
 

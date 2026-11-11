@@ -66,6 +66,27 @@ StyledWindow {
         return Visibilities.exclusionsFor(screen);
     }
     property bool dragging: false
+    /// The big cards' preview items by window address. The current
+    /// workspace's thumbnail mirrors these: a second stream of a window that is
+    /// already streaming gets no frame until the window next repaints.
+    property var cardPreviews: ({})
+
+    function _setCardPreview(address: string, item: Item): void {
+        if (!address || !item)
+            return;
+        const map = Object.assign({}, cardPreviews);
+        map[address] = item;
+        cardPreviews = map;
+    }
+
+    /// Only if it is still this card's: a rebuilt card may have taken over.
+    function _clearCardPreview(address: string, item: Item): void {
+        if (!address || cardPreviews[address] !== item)
+            return;
+        const map = Object.assign({}, cardPreviews);
+        delete map[address];
+        cardPreviews = map;
+    }
 
     // ---- Pointer while the launcher is open --------------------------------
     // The open launcher covers the screen with the shell's own window to catch
@@ -539,6 +560,8 @@ StyledWindow {
             screen: win.screen
             activeWsId: win.activeWsId
             showIcons: win.showThumbIcons
+            live: win.shown
+            cardPreviews: win.cardPreviews
             dragging: win.dragging
             windowsOn: wsId => win.windowsOn(wsId)
             onWorkspaceClicked: wsId => {
@@ -681,6 +704,8 @@ StyledWindow {
                     }
                     onActivated: win.activateWindow(modelData.address)
                     onDragActiveChanged: win.dragging = dragActive
+                    Component.onCompleted: win._setCardPreview(modelData.address, previewItem)
+                    Component.onDestruction: win._clearCardPreview(modelData.address, previewItem)
                 }
             }
 
