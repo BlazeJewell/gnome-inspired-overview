@@ -7,6 +7,7 @@ import Caelestia.Config
 import qs.components
 import qs.components.images
 import qs.services
+import "."
 
 // The row of workspace thumbnails across the top. Each one is a small copy of
 // that desktop: the wallpaper with live, scaled-down previews of its windows
@@ -151,7 +152,7 @@ Item {
                             Component.onCompleted: root.registerPreview(modelData, miniPreview)
                             Component.onDestruction: root.unregisterPreview(modelData, miniPreview)
 
-                            WindowPreview {
+                            LivePreview {
                                 id: miniPreview
 
                                 anchors.centerIn: parent

@@ -6,6 +6,7 @@ import Caelestia.Config
 import qs.components
 import qs.components.images
 import qs.services
+import "."
 
 // One window in the overview: a live preview with the app icon tucked under its
 // bottom edge, and the title and a close button on hover, GNOME style.
@@ -119,7 +120,7 @@ Item {
         border.width: root.selected || root.hovered ? Math.max(2, Math.round(3 * root.s)) : 0
         border.color: Qt.alpha(Colours.palette.m3primary, 0.9)
 
-        WindowPreview {
+        LivePreview {
             id: preview
 
             // A pixel past the clip on every side, so the clipped edge is
