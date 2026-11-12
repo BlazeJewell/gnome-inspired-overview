@@ -28,13 +28,17 @@ Item {
     property var unregisterPreview: (address, item) => {}
     property bool dragging: false
     property var windowsOn: wsId => []
+    /// Told before the strip changes a window or desktop itself.
+    property var noteAction: () => {}
 
     signal workspaceClicked(int wsId)
     signal createWorkspace()
 
     function removeWorkspace(ws: var): void {
-        if (count > 1 && ws && ws.id)
+        if (count > 1 && ws && ws.id) {
+            noteAction();
             Kwin.removeWorkspace(ws.id);
+        }
     }
 
     readonly property real screenAspect: screen && screen.height > 0 ? screen.width / screen.height : 16 / 9
@@ -258,6 +262,7 @@ Item {
                         const addr = src.clientAddress;
                         const target = thumb.wsId;
                         event.accept(Qt.MoveAction);
+                        root.noteAction();
                         Qt.callLater(() => Kwin.setWindowDesktop(addr, target));
                     }
                 }

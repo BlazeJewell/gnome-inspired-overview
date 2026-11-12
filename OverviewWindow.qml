@@ -265,8 +265,10 @@ StyledWindow {
     }
 
     function switchWorkspace(wsId: int): void {
-        if (wsId !== activeWsId)
+        if (wsId !== activeWsId) {
+            ov.noteOwnAction();
             Kwin.switchToWorkspace(wsId, screen.name);
+        }
     }
 
     function stepWorkspace(delta: int): void {
@@ -572,6 +574,7 @@ StyledWindow {
                     win.switchWorkspace(wsId);
             }
             onCreateWorkspace: Kwin.createWorkspace("")
+            noteAction: () => win.ov.noteOwnAction()
         }
 
         // ---- Windows --------------------------------------------------------
@@ -706,6 +709,7 @@ StyledWindow {
                     onActivated: win.activateWindow(modelData.address)
                     onDragActiveChanged: win.dragging = dragActive
                     mirrorSource: win.thumbPreviews[modelData.address] ?? null
+                    beforeClose: () => win.ov.noteOwnAction()
                 }
             }
 

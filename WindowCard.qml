@@ -35,6 +35,8 @@ Item {
     /// card shows that stream instead of opening a second one, so switching
     /// workspaces starts and stops no streams.
     property Item mirrorSource: null
+    /// Called just before the card closes its window.
+    property var beforeClose: () => {}
     readonly property bool mirroring: mirrorSource !== null && mirrorSource.hasStream === true
 
     signal activated()
@@ -88,8 +90,10 @@ Item {
 
             type: Anim.DefaultEffects
             onRunningChanged: {
-                if (!running && root.closing)
+                if (!running && root.closing) {
+                    root.beforeClose();
                     Kwin.closeWindow(root.clientAddress);
+                }
             }
         }
     }

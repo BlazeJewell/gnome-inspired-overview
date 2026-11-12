@@ -30,6 +30,11 @@ Scope {
     property var _fullscreenAtOpen: []
     property string _refullscreenAddress: ""
     property bool _activating: false
+    /// When the overview last moved focus itself (switched desktop, closed or
+    /// moved a window): KWin then focuses another window on its own.
+    property real _ownActionAt: 0
+    property int _windowCount: 0
+    readonly property string _activeAddress: Kwin.activeWindow && Kwin.activeWindow.address ? String(Kwin.activeWindow.address) : ""
 
     property bool _pendingOverview: false
     property bool _pendingMeta: false
@@ -42,7 +47,32 @@ Scope {
         Visibilities.preOverviewActiveWindowAddress = active && active.address ? active.address : "";
         activeScreen = Kwin.cursorOutputName() || Kwin.activeOutputName || "";
         _fullscreenAtOpen = (Kwin.windowList ?? []).filter(w => w.fullscreen === true && !w.minimized && w.address).map(w => String(w.address));
+        _windowCount = (Kwin.windowList ?? []).length;
         open = true;
+    }
+
+    function noteOwnAction(): void {
+        _ownActionAt = Date.now();
+    }
+
+    /// Something outside the overview (the bar's dock, a shortcut) focused or
+    /// opened a window: close, and leave focus where it went.
+    function _closeForOutside(): void {
+        if (!open || Date.now() - _ownActionAt < 1000)
+            return;
+        _hideLeavingFocus();
+    }
+
+    /// Closes without handing focus back: something else is taking it.
+    function _hideLeavingFocus(): void {
+        _activating = true;
+        hide();
+        _activating = false;
+    }
+
+    on_ActiveAddressChanged: {
+        if (open && _activeAddress !== "")
+            _closeForOutside();
     }
 
     /// Focuses a window and closes the overview.
@@ -51,9 +81,7 @@ Scope {
             return;
         Kwin.focusWindow(address);
         _restoreFullscreen(address);
-        _activating = true;
-        hide();
-        _activating = false;
+        _hideLeavingFocus();
     }
 
     function hide(): void {
@@ -126,7 +154,7 @@ Scope {
         // Enter in the launcher: whatever it ran, the overview is done too.
         Qt.callLater(() => {
             if (root.open && root.launcherFromOverview && !Visibilities.launcherOpen)
-                root.hide();
+                root._hideLeavingFocus();
         });
     }
 
@@ -197,8 +225,13 @@ Scope {
     // close the overview when it does.
     Connections {
         function onWindowListChanged(): void {
-            if (root.open && root._windowCountAtClose >= 0 && Kwin.windowList.length > root._windowCountAtClose)
-                root.hide();
+            const n = Kwin.windowList.length;
+            const grew = n > root._windowCount;
+            root._windowCount = n;
+            if (root.open && root._windowCountAtClose >= 0 && n > root._windowCountAtClose)
+                root._hideLeavingFocus();
+            else if (root.open && grew)
+                root._closeForOutside();
         }
 
         target: Kwin
