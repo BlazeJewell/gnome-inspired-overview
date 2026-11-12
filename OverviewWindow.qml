@@ -284,8 +284,7 @@ StyledWindow {
     function activateWindow(address: string): void {
         if (!address)
             return;
-        Kwin.focusWindow(address);
-        ov.hide();
+        ov.activate(address);
     }
 
     function cycleSelection(backwards: bool): void {

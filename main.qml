@@ -24,6 +24,13 @@ Scope {
     /// Characters typed before the launcher's search field could take them.
     property string pendingText: ""
 
+    /// Windows that were fullscreen when the overview opened. Games such as
+    /// CS2 leave fullscreen when they lose keyboard focus to the overview;
+    /// they are put back when the overview hands focus back to them.
+    property var _fullscreenAtOpen: []
+    property string _refullscreenAddress: ""
+    property bool _activating: false
+
     property bool _pendingOverview: false
     property bool _pendingMeta: false
     property bool _ownLauncher: false
@@ -34,16 +41,47 @@ Scope {
         const active = Kwin.activeWindow;
         Visibilities.preOverviewActiveWindowAddress = active && active.address ? active.address : "";
         activeScreen = Kwin.cursorOutputName() || Kwin.activeOutputName || "";
+        _fullscreenAtOpen = (Kwin.windowList ?? []).filter(w => w.fullscreen === true && !w.minimized && w.address).map(w => String(w.address));
         open = true;
     }
 
+    /// Focuses a window and closes the overview.
+    function activate(address: string): void {
+        if (!address)
+            return;
+        Kwin.focusWindow(address);
+        _restoreFullscreen(address);
+        _activating = true;
+        hide();
+        _activating = false;
+    }
+
     function hide(): void {
+        if (open && !_activating) {
+            // Closed without picking a window: focus goes back to the one that
+            // had it, if it is still on screen, so a game drops back in too.
+            const prev = Visibilities.preOverviewActiveWindowAddress;
+            const w = (Kwin.windowList ?? []).find(x => String(x.address) === prev);
+            const wsId = w?.workspace?.id ?? -1;
+            if (w && !w.minimized && _fullscreenAtOpen.includes(prev) && (wsId === -1 || Kwin.activeWsId === -1 || wsId === Kwin.activeWsId)) {
+                Kwin.focusWindow(prev);
+                _restoreFullscreen(prev);
+            }
+        }
         open = false;
         pendingText = "";
         _windowCountAtClose = -1;
         if (launcherFromOverview && Visibilities.launcherOpen)
             Visibilities.closeLauncher();
         launcherFromOverview = false;
+    }
+
+    function _restoreFullscreen(address: string): void {
+        if (!_fullscreenAtOpen.includes(address))
+            return;
+        _refullscreenAddress = address;
+        refullscreenTimer.tries = 0;
+        refullscreenTimer.restart();
     }
 
     function toggle(): void {
@@ -100,6 +138,28 @@ Scope {
         property bool thumbnailPreviews: true
 
         category: "Plugin_gnome-inspired-overview"
+    }
+
+    // Puts a window back in fullscreen once it has focus again. Checked a few
+    // times, as the game may only notice the focus a moment later.
+    Timer {
+        id: refullscreenTimer
+
+        property int tries: 0
+
+        interval: 120
+        repeat: true
+        onTriggered: {
+            tries++;
+            const addr = root._refullscreenAddress;
+            const w = (Kwin.windowList ?? []).find(x => String(x.address) === addr);
+            if (w && w.fullscreen !== true)
+                Kwin.setFullscreen(addr, true);
+            if (!w || tries >= 5) {
+                root._refullscreenAddress = "";
+                stop();
+            }
+        }
     }
 
     // Hands the typed text to the launcher once its content exists.
