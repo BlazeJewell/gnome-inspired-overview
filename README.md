@@ -100,6 +100,7 @@ The rest of the overview keeps working.
 | `OverviewWindow.qml` | The per-output overview, window layout and launcher flow |
 | `WindowCard.qml` | One live window preview |
 | `WorkspaceStrip.qml` | The workspace thumbnails |
+| `LivePreview.qml` | A window's live picture, on a screencast stream of its own |
 | `screenshots/` | Images used in this README |
 
 ## License
