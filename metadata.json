@@ -2,7 +2,7 @@
   "id": "gnome-inspired-overview",
   "name": "GNOME-Inspired Overview",
   "description": "A GNOME-inspired overview: workspace thumbnails along the top and live window previews. Meta opens it; typing opens the launcher from the bottom and the windows flow around it.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "quickshell",
   "ui": "main.qml",
   "icon": "grid_view",
