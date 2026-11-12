@@ -101,6 +101,7 @@ The rest of the overview keeps working.
 | `WindowCard.qml` | One live window preview |
 | `WorkspaceStrip.qml` | The workspace thumbnails |
 | `LivePreview.qml` | A window's live picture, on a screencast stream of its own |
+| `raise-shell.js` | KWin script that keeps the shell's popouts and panels above the overview |
 | `screenshots/` | Images used in this README |
 
 ## License

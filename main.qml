@@ -49,6 +49,7 @@ Scope {
         _fullscreenAtOpen = (Kwin.windowList ?? []).filter(w => w.fullscreen === true && !w.minimized && w.address).map(w => String(w.address));
         _windowCount = (Kwin.windowList ?? []).length;
         open = true;
+        raiseTimer.restart();
     }
 
     function noteOwnAction(): void {
@@ -189,6 +190,48 @@ Scope {
             }
         }
     }
+
+    // The overview shares the shell's layer and opens after the shell's own
+    // window, so it would cover the bar's popouts (the dock's window previews)
+    // and panels. Once it is up, a small KWin script raises the shell's window
+    // above it: unload any earlier copy, load, run. The script stays loaded
+    // (it has finished) until the next open or until the plugin goes away.
+    readonly property string _raiseScriptName: "gnome-inspired-overview-raise"
+    readonly property string _raiseScriptPath: decodeURIComponent(Qt.resolvedUrl("raise-shell.js").toString().replace(/^file:\/\//, ""))
+    readonly property var _kwinScripting: ["dbus-send", "--session", "--print-reply", "--dest=org.kde.KWin", "/Scripting"]
+
+    Timer {
+        id: raiseTimer
+
+        interval: 60
+        onTriggered: {
+            if (root.open && !raiseProc.running) {
+                raiseProc.step = 0;
+                raiseProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: raiseProc
+
+        property int step: 0
+        readonly property var steps: [
+            [...root._kwinScripting, "org.kde.kwin.Scripting.unloadScript", "string:" + root._raiseScriptName],
+            [...root._kwinScripting, "org.kde.kwin.Scripting.loadScript", "string:" + root._raiseScriptPath, "string:" + root._raiseScriptName],
+            [...root._kwinScripting, "org.kde.kwin.Scripting.start"]
+        ]
+
+        command: steps[Math.min(step, steps.length - 1)]
+        onExited: {
+            if (step < steps.length - 1) {
+                step++;
+                running = true;
+            }
+        }
+    }
+
+    Component.onDestruction: Quickshell.execDetached([...root._kwinScripting, "org.kde.kwin.Scripting.unloadScript", "string:" + root._raiseScriptName])
 
     // Hands the typed text to the launcher once its content exists.
     Timer {
